@@ -6,6 +6,8 @@ from fpdf import FPDF as fpdf
 import io
 import json
 
+cwd = os.path.dirname(os.path.realpath(__file__))
+
 
 def find_between(s, first, last):
     try:
@@ -72,9 +74,10 @@ def loadPDFs(pagesToPDF, PDFLocations, gurpsPDFs={}):
 
 
 def assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, assembledPDFdir):
+    global cwd
     assembledPDFs = {}
     assembledCharacterPDFdir = assembledPDFdir + "/" + characterName + "/"
-    tempPDFpath = os.getcwd() + "/ShouldDissappear.pdf"
+    tempPDFpath = cwd + "/ShouldDissappear.pdf"
     for v in sections:
         assembledPDFs[v] = PyPDF2.PdfFileWriter()
         genTitlepage(v)
@@ -97,7 +100,8 @@ def assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, assembledPDFdir
 
 
 def genTitlepage(string):
-    tempPDFpath = os.getcwd() + "/ShouldDissappear.pdf"
+    global cwd
+    tempPDFpath = cwd + "/ShouldDissappear.pdf"
     newPage = fpdf(format="letter", unit="pt")
     newPage.add_page(orientation="P")
     newPage.set_font("Arial", size=20)
@@ -121,11 +125,12 @@ def doIt(infoDict):
     characters = []
     if os.path.isdir(characterDir):
         for v in os.listdir(characterDir):
+            print(v)
             if os.path.isfile(characterDir + "\\" + v):
                 if v.lower().endswith(".gca4"):
                     characters.append(characterDir + "\\" + v)
-            if characters == []:
-                return "No .gca4 files found in the listed directory"
+        if characters == []:
+            return "No .gca4 files found in the listed directory"
     elif os.path.isfile(characterDir):
         if characterDir.lower().endswith(".gca4"):
             characters.append(characterDir)
@@ -188,18 +193,19 @@ def doIt(infoDict):
             characterName = rfind_between(v, "/", ".")
             if characterName == "":
                 characterName = rfind_between(v, "\\", ".")
-            pagesToPDF, sections = getToPDF(characterList, books, pagesToPDF, sections)
+            pagesToPDF, sections = getToPDF(
+                characterList, books, pagesToPDF, sections)
             if pagesToPDF == "Error":
                 return sections
             gurpsPDFs = loadPDFs(pagesToPDF, PDFlocations, gurpsPDFs)
-            assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, outDir)
+            assemblePDFs(sections, pagesToPDF, gurpsPDFs,
+                         characterName, outDir)
     except IndexError as x:
         return "Page number exceeds book length,\ncheck the extra pages table and the shorthands for PDFs"
     return "Finished!"
 
 
 if __name__ == "__main__":
-    cwd = os.getcwd()
     description = """This program is designed to let you generate a PDF based off of a .gca4 file
     A default profile is supplied, and each piece can be overwritten seperately using arguments listed below
     """
@@ -268,7 +274,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-g", "--gurps-pdfs", help="Full file path to GURPS PDFs directory", required=False
     )
-    parser.add_argument("-o", "--output", help="Full file path to output folder", required=False)
+    parser.add_argument(
+        "-o", "--output", help="Full file path to output folder", required=False)
     parser.add_argument(
         "-b",
         "--books",

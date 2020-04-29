@@ -25,7 +25,8 @@ class bookBoxLayout(QVBoxLayout):
         self.books = []
 
         self.addWidget(
-            QLabel("Add additional PDFs with the shorthand connect them with page numbers")
+            QLabel(
+                "Add additional PDFs with the shorthand connect them with page numbers")
         )
         self.hBox.addSpacing(39)
         self.hBox.addWidget(QLabel("Shorthand:"))
@@ -38,7 +39,8 @@ class bookBoxLayout(QVBoxLayout):
         self.intermediateWidget = QWidget()
         self.intermediateWidget.setLayout(self.bookVbox)
         self.leftScrollarea.setWidget(self.intermediateWidget)
-        self.leftScrollarea.setMinimumWidth(self.bookVbox.minimumSize().width() + 15)
+        self.leftScrollarea.setMinimumWidth(
+            self.bookVbox.minimumSize().width() + 15)
         self.addWidget(self.leftScrollarea)
 
         self.addWidget(
@@ -81,12 +83,14 @@ class bookBoxLayout(QVBoxLayout):
         self.bookHboxList.append(QHBoxLayout())
         self.bookHboxList[-1].addWidget(close)
         close.setFixedSize(22, 22)
-        close.pressed.connect(lambda x=len(self.books) - 1: self.removeBookEventHandler(x))
+        close.pressed.connect(lambda x=len(self.books) -
+                              1: self.removeBookEventHandler(x))
         self.bookHboxList[-1].addWidget(shorthand)
         shorthand.setFixedWidth(55)
         self.bookHboxList[-1].addSpacing(10)
         self.bookHboxList[-1].addWidget(PDFname)
-        self.bookVbox.insertLayout(self.bookVbox.count() - 1, self.bookHboxList[-1])
+        self.bookVbox.insertLayout(
+            self.bookVbox.count() - 1, self.bookHboxList[-1])
 
     def returnLayoutinfo(self):
         books = {}
@@ -127,7 +131,8 @@ class profileBoxLayout(QVBoxLayout):
         self.hBoxes[1].addWidget(self.comboBox)
         for k in list(loadedJson.keys()):
             self.comboBox.addItem(k)
-        self.comboBox.setCurrentIndex(self.comboBox.findText(parent.currentProfilename))
+        self.comboBox.setCurrentIndex(
+            self.comboBox.findText(parent.currentProfilename))
         self.addLayout(self.hBoxes[1])
 
         self.hBoxes.append(QHBoxLayout())
@@ -140,7 +145,8 @@ class profileBoxLayout(QVBoxLayout):
         self.addLayout(self.hBoxes[2])
 
     def loadLayout(self, *args):
-        QTimer.singleShot(0, lambda: self.parent.messageBox.hideBottommessage())
+        QTimer.singleShot(
+            0, lambda: self.parent.messageBox.hideBottommessage())
         global loadedJson
         currentText = self.comboBox.currentText()
         if currentText not in loadedJson.keys():
@@ -156,10 +162,12 @@ class profileBoxLayout(QVBoxLayout):
 
         saveJson(loadedJson)
         loadJson()
-        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(currentText + " Loaded"))
+        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(
+            currentText + " Loaded"))
 
     def saveProfile(self, *args):
-        QTimer.singleShot(0, lambda: self.parent.messageBox.hideBottommessage())
+        QTimer.singleShot(
+            0, lambda: self.parent.messageBox.hideBottommessage())
         global loadedJson
         currentText = self.comboBox.currentText()
         if currentText == "" or currentText == "Defaults":
@@ -177,14 +185,17 @@ class profileBoxLayout(QVBoxLayout):
         if not currentText in savedLayoutsnames:
             self.comboBox.insertItem(2, currentText.lower())
         self.parent.currentProfilename = currentText
-        self.comboBox.setCurrentIndex(self.comboBox.findText(self.parent.currentProfilename))
+        self.comboBox.setCurrentIndex(
+            self.comboBox.findText(self.parent.currentProfilename))
 
         saveJson(tempDict)
         loadJson()
-        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(currentText + " Saved"))
+        QTimer.singleShot(
+            0, lambda: self.parent.messageBox.bottomMessage(currentText + " Saved"))
 
     def deleteLayout(self, *args):
-        QTimer.singleShot(0, lambda: self.parent.messageBox.hideBottommessage())
+        QTimer.singleShot(
+            0, lambda: self.parent.messageBox.hideBottommessage())
         currentText = self.comboBox.currentText()
         if self.comboBox.currentIndex() == -1 or currentText == "Defaults":
             return
@@ -192,7 +203,8 @@ class profileBoxLayout(QVBoxLayout):
         self.comboBox.setCurrentIndex(self.comboBox.findText("Defaults"))
         self.comboBox.removeItem(self.comboBox.findText(currentText))
         self.loadLayout()
-        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(currentText + " Deleted"))
+        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(
+            currentText + " Deleted"))
 
 
 class characterBoxLayout(QVBoxLayout):
@@ -208,7 +220,8 @@ class characterBoxLayout(QVBoxLayout):
             )
         )
         self.addWidget(
-            QLabel('Note: If left blank, assumed directory is "current directory \\characters"')
+            QLabel(
+                'Note: If left blank, assumed directory is "current directory \\characters"')
         )
         self.addWidget(QFrame(frameShape=QFrame.HLine))
 
@@ -232,7 +245,8 @@ class outBoxLayout(QVBoxLayout):
         self.addWidget(QLabel("Assembled PDF output file/folder:"))
         self.addWidget(self.pathBox)
         self.addWidget(
-            QLabel('Note: If left blank assumed directory is "current directory \\assembledPDFs"')
+            QLabel(
+                'Note: If left blank assumed directory is "current directory \\assembledPDFs"')
         )
         self.addWidget(QFrame(frameShape=QFrame.HLine))
 
@@ -256,7 +270,8 @@ class inBoxLayout(QVBoxLayout):
         self.addWidget(QLabel("Game PDFs Input Dir:"))
         self.addWidget(self.pathBox)
         self.addWidget(
-            QLabel('Note: If left blank assumed directory is "current directory \\gurpsPDFs"')
+            QLabel(
+                'Note: If left blank assumed directory is "current directory \\gurpsPDFs"')
         )
         self.addWidget(
             QLabel(
@@ -287,7 +302,8 @@ class doItBoxLayout(QHBoxLayout):
 
     def doItEventHandler(self):
         status = gca4PDFripper.doIt(self.parent.getInfo())
-        QTimer.singleShot(0, lambda: self.parent.messageBox.bottomMessage(status))
+        QTimer.singleShot(
+            0, lambda: self.parent.messageBox.bottomMessage(status))
 
 
 class messageBoxLayout(QVBoxLayout):
@@ -393,13 +409,15 @@ class pageTableBoxLayout(QVBoxLayout):
                 if i2 >= pageTable.columnCount():
                     pageTable.setColumnCount(i2 + 1)
                     pageTable.setHorizontalHeaderItem(i2, QTableWidgetItem())
-                    pageTable.horizontalHeaderItem(i2).setText("Book/Page " + str(i2))
+                    pageTable.horizontalHeaderItem(
+                        i2).setText("Book/Page " + str(i2))
                 pageTable.setItem(i, i2, QTableWidgetItem())
                 pageTable.item(i, i2).setText(v2)
         pageTable.setColumnCount(pageTable.columnCount() + 1)
         tableColumncount = pageTable.columnCount()
         tableRowcount = pageTable.rowCount()
-        pageTable.setHorizontalHeaderItem(tableColumncount - 1, QTableWidgetItem())
+        pageTable.setHorizontalHeaderItem(
+            tableColumncount - 1, QTableWidgetItem())
         pageTable.horizontalHeaderItem(tableColumncount - 1).setText(
             "Book/Page " + str(tableColumncount - 1)
         )
@@ -457,13 +475,15 @@ class mainWindow(QWidget):
 
     def getInfo(self):
         infodict = {}
-        layouts = [self.bookBox, self.characterBox, self.outBox, self.inBox, self.pageTableBox]
+        layouts = [self.bookBox, self.characterBox,
+                   self.outBox, self.inBox, self.pageTableBox]
         for v in layouts:
             infodict.update(v.returnLayoutinfo())
         return infodict
 
     def setInfo(self, setDict):
-        layouts = [self.bookBox, self.characterBox, self.outBox, self.inBox, self.pageTableBox]
+        layouts = [self.bookBox, self.characterBox,
+                   self.outBox, self.inBox, self.pageTableBox]
         for v in layouts:
             v.setlayoutinfo(setDict)
 
@@ -523,7 +543,8 @@ def windowCreate():
 
 
 if __name__ == "__main__":
-    cwd = os.getcwd()
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    print(cwd)
     saveProfilepath = cwd + "\\savedProfiles"
     loadJson()
     app = QApplication(sys.argv)
