@@ -1,4 +1,4 @@
-# Warframe Market Overlay
+# gca4 PDF Ripper
 
 This is a utility written in python for the GURPS Character Assistant program with the purpose of creating a PDF relevant to your character.
 

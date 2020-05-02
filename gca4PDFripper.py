@@ -87,7 +87,14 @@ def assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, assembledPDFdir
             os.remove(tempPDFpath)
         for k, sv in pagesToPDF[v].items():
             for tv in sv:
-                assembledPDFs[v].addPage(gurpsPDFs[k].getPage(int(tv) - 1))
+                # add support for multiple pages Eg. 57-67
+                if "-" in tv:
+                    tvSplit = tv.split("-")
+                    tvList = list(range(int(tvSplit[0]), int(tvSplit[1]) + 1))
+                    for fv in tvList:
+                        assembledPDFs[v].addPage(gurpsPDFs[k].getPage(fv - 1))
+                else:
+                    assembledPDFs[v].addPage(gurpsPDFs[k].getPage(int(tv) - 1))
         if not os.path.exists(assembledCharacterPDFdir):
             os.makedirs(assembledCharacterPDFdir)
         with open(assembledCharacterPDFdir + v + ".pdf", "wb") as fileOut:
@@ -161,6 +168,7 @@ def doIt(infoDict):
             return "Expected GURPS PDF missing from directory: " + v
 
     books = {}
+    print()
     for k in booksDict:
         books[k] = []
     PDFlocations = {}
@@ -193,13 +201,11 @@ def doIt(infoDict):
             characterName = rfind_between(v, "/", ".")
             if characterName == "":
                 characterName = rfind_between(v, "\\", ".")
-            pagesToPDF, sections = getToPDF(
-                characterList, books, pagesToPDF, sections)
+            pagesToPDF, sections = getToPDF(characterList, books, pagesToPDF, sections)
             if pagesToPDF == "Error":
                 return sections
             gurpsPDFs = loadPDFs(pagesToPDF, PDFlocations, gurpsPDFs)
-            assemblePDFs(sections, pagesToPDF, gurpsPDFs,
-                         characterName, outDir)
+            assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, outDir)
     except IndexError as x:
         return "Page number exceeds book length,\ncheck the extra pages table and the shorthands for PDFs"
     return "Finished!"
@@ -274,8 +280,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-g", "--gurps-pdfs", help="Full file path to GURPS PDFs directory", required=False
     )
-    parser.add_argument(
-        "-o", "--output", help="Full file path to output folder", required=False)
+    parser.add_argument("-o", "--output", help="Full file path to output folder", required=False)
     parser.add_argument(
         "-b",
         "--books",
