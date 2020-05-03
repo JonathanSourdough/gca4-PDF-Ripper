@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 import argparse
 import copy
 import PyPDF2
@@ -6,7 +6,7 @@ from fpdf import FPDF as fpdf
 import io
 import json
 
-cwd = os.path.dirname(os.path.realpath(__file__))
+scriptDir = Path(__file__).resolve().parent
 
 
 def find_between(s, first, last):
@@ -41,13 +41,25 @@ def getToPDF(characterList, books, pagesToPDF={}, sections=[]):
         if "page" in v:
             pageIndex = v.index("page")
             booksAndpages = find_between(v[pageIndex:-1], "(", ")").split(",")
-            for v in booksAndpages:
-                possibleBooks = [i for i in books if i in v]
+            for v2 in booksAndpages:
+                if " " in v2:
+                    v2 = v2.replace(" ", "")
+                if v2.isdigit():
+                    v2 = "B" + str(v2)
+                if v2 == "":
+                    continue
+                possibleBooks = [i for i in books if i in v2]
                 try:
                     theBook = max(possibleBooks, key=len)
                 except ValueError:
-                    return "Error", "Book for " + v + " not found."
-                thePage = v.split(theBook)[-1]
+                    return "Error", "Book for " + v2 + " not found."
+                try:
+                    thePage = v2.split(theBook)[-1]
+                except ValueError as e:
+                    thePage = theBook
+                if not thePage.isdigit():
+                    if not "-" in thePage:
+                        return ("Error", "Book for " + v2 + " not found.")
                 if thePage not in pagesToPDF[lastSection][theBook]:
                     pagesToPDF[lastSection][theBook].append(thePage)
     pagesToPDF = removeEmptytoPDF(pagesToPDF, sections)
@@ -74,20 +86,21 @@ def loadPDFs(pagesToPDF, PDFLocations, gurpsPDFs={}):
 
 
 def assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, assembledPDFdir):
-    global cwd
+    global scriptDir
     assembledPDFs = {}
-    assembledCharacterPDFdir = assembledPDFdir + "/" + characterName + "/"
-    tempPDFpath = cwd + "/ShouldDissappear.pdf"
+    assembledCharacterPDFdir = str(Path(assembledPDFdir) / characterName)
+    tempPDFpath = str(scriptDir / "ShouldDissappear.pdf")
+    Path(assembledCharacterPDFdir).mkdir(exist_ok=True)
     for v in sections:
         assembledPDFs[v] = PyPDF2.PdfFileWriter()
         genTitlepage(v)
         temp = PyPDF2.PdfFileReader(tempPDFpath)
         assembledPDFs[v].addPage(temp.getPage(0))
-        if os.path.exists(tempPDFpath):
-            os.remove(tempPDFpath)
+        Path(tempPDFpath).unlink(missing_ok=True)
         for k, sv in pagesToPDF[v].items():
             for tv in sv:
-                # add support for multiple pages Eg. 57-67
+                if tv == "":
+                    tv = "1"
                 if "-" in tv:
                     tvSplit = tv.split("-")
                     tvList = list(range(int(tvSplit[0]), int(tvSplit[1]) + 1))
@@ -95,20 +108,18 @@ def assemblePDFs(sections, pagesToPDF, gurpsPDFs, characterName, assembledPDFdir
                         assembledPDFs[v].addPage(gurpsPDFs[k].getPage(fv - 1))
                 else:
                     assembledPDFs[v].addPage(gurpsPDFs[k].getPage(int(tv) - 1))
-        if not os.path.exists(assembledCharacterPDFdir):
-            os.makedirs(assembledCharacterPDFdir)
-        with open(assembledCharacterPDFdir + v + ".pdf", "wb") as fileOut:
+        with open(str(Path(assembledCharacterPDFdir) / (v + ".pdf")), "wb") as fileOut:
             assembledPDFs[v].write(fileOut)
     assembledCharacterPDF = PyPDF2.PdfFileWriter()
     for v in assembledPDFs:
         assembledCharacterPDF.appendPagesFromReader(assembledPDFs[v])
-    with open(assembledPDFdir + characterName + ".pdf", "wb") as fileOut:
+    with open(assembledCharacterPDFdir + ".pdf", "wb") as fileOut:
         assembledCharacterPDF.write(fileOut)
 
 
 def genTitlepage(string):
-    global cwd
-    tempPDFpath = cwd + "/ShouldDissappear.pdf"
+    global scriptDir
+    tempPDFpath = str(scriptDir / "ShouldDissappear.pdf")
     newPage = fpdf(format="letter", unit="pt")
     newPage.add_page(orientation="P")
     newPage.set_font("Arial", size=20)
@@ -117,7 +128,7 @@ def genTitlepage(string):
 
 
 def loadJson(file):
-    if os.path.isfile(file):
+    if Path(file).is_file():
         with open(file, "r") as f:
             try:
                 return json.loads(f.read())
@@ -127,60 +138,50 @@ def loadJson(file):
 
 
 def doIt(infoDict):
-    global cwd
-    characterDir = infoDict["charPath"]
+    global scriptDir
     characters = []
-    if os.path.isdir(characterDir):
-        for v in os.listdir(characterDir):
-            print(v)
-            if os.path.isfile(characterDir + "\\" + v):
-                if v.lower().endswith(".gca4"):
-                    characters.append(characterDir + "\\" + v)
+    if Path(infoDict["charPath"][0]).is_dir():
+        for v in Path(infoDict["charPath"][0]).iterdir():
+            if v.suffix == ".gca4":
+                characters.append(str(v))
         if characters == []:
             return "No .gca4 files found in the listed directory"
-    elif os.path.isfile(characterDir):
-        if characterDir.lower().endswith(".gca4"):
-            characters.append(characterDir)
-        if characters == []:
-            return "File listed is not a .gca4"
+    elif Path(infoDict["charPath"][0]).is_file():
+        characters = infoDict["charPath"]
     else:
         return "Listed Character file/directory does not exist"
 
     outDir = infoDict["outPath"]
-    if not outDir.endswith(("\\", "/")):
-        outDir = outDir + "\\"
-    if not os.path.isdir(outDir):
-        os.mkdir(outDir)
+    Path(outDir).mkdir(exist_ok=True)
 
     inDir = infoDict["inPath"]
     if inDir == "":
-        inDir = cwd + "\\gurpsPDFs"
-    if not os.path.isdir(inDir):
+        inDir = str(scriptDir / "/gurpsPDFs")
+    if not Path(inDir).is_dir():
         return "Listed GURPS PDF directory does not exist"
 
     PDFsin = []
     booksDict = infoDict["books"]
-    for v in os.listdir(inDir):
-        if (inDir + "\\" + v).lower().endswith(".pdf"):
-            PDFsin.append(v)
+    for v in Path(inDir).iterdir():
+        if v.suffix == ".pdf":
+            PDFsin.append(str(v.name))
     for _, v in booksDict.items():
         if v not in PDFsin:
             return "Expected GURPS PDF missing from directory: " + v
 
     books = {}
-    print()
     for k in booksDict:
         books[k] = []
     PDFlocations = {}
     for k, v in booksDict.items():
-        PDFlocations[k] = inDir + "\\" + v
+        PDFlocations[k] = inDir + "/" + v
 
-    pagesToPDF = {}
+    pagesToPDFprep = {}
     pages = infoDict["extraPages"]["pages"]
     sections = infoDict["extraPages"]["sections"]
     for i, v in enumerate(sections):
         lastSection = v
-        pagesToPDF[lastSection] = copy.deepcopy(books)
+        pagesToPDFprep[lastSection] = copy.deepcopy(books)
         for i2, v in enumerate(pages[i]):
             thisText = v
             if thisText != "":
@@ -188,14 +189,16 @@ def doIt(infoDict):
                 if possibleBooks != []:
                     theBook = max(possibleBooks, key=len)
                     thePage = thisText.split(theBook)[-1]
-                    if thePage not in pagesToPDF[lastSection][theBook]:
-                        pagesToPDF[lastSection][theBook].append(thePage)
+                    if thePage not in pagesToPDFprep[lastSection][theBook]:
+                        pagesToPDFprep[lastSection][theBook].append(thePage)
                 else:
                     return "Mismatch between shorthand and additional pages entry: " + str(thisText)
 
     gurpsPDFs = {}
     try:
         for v in characters:
+            print(v)
+            pagesToPDF = copy.deepcopy(pagesToPDFprep)
             with open(v, encoding="utf8", errors="ignore") as file:
                 characterList = file.read().split("\n")
             characterName = rfind_between(v, "/", ".")
@@ -219,6 +222,22 @@ if __name__ == "__main__":
     epilogue = (
         """json formatting example:
 {
+  "charPath": ["""
+        + str(
+            Path.home()
+            / "Documents"
+            / "GURPS Character Assistant 4"
+            / "characters"
+            / "iconics"
+            / "BaronJanosTelkozep.gca4"
+        )
+        + """],
+  "outPath": """
+        + str(scriptDir / "assembledPDFs")
+        + """,
+  "inPath": """
+        + str(scriptDir / "gurpsPDFs")
+        + """,
   "books": {
     "B": "Basic Set Part 1 _ 2 - GURPS - 4th Edition.pdf",
     "GF": "Gun Fu - GURPS - 4th Edition.pdf",
@@ -234,15 +253,6 @@ if __name__ == "__main__":
     "PP": "Psionic Powers - GURPS - 4th Edition.pdf",
     "Th": "Thaumatology - GURPS - 4th Edition.pdf"
   },
-  "charPath": "C:\\Users\\"""
-        + os.getlogin()
-        + """\\Documents\\GURPS Character Assistant 4\\characters",
-  "outPath": \""""
-        + cwd
-        + """\\assembledPDFs",
-  "inPath": \""""
-        + cwd
-        + """\\gurpsPDFs",
   "extraPages": {
     "sections": [
       "Game Mechanics"
@@ -275,12 +285,15 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "-c", "--character", help="Full file path to character sheet", required=False
+        "-c",
+        "--character",
+        help="Full path to either a directory containing a .gca4 or to the file directly",
+        required=False,
     )
     parser.add_argument(
-        "-g", "--gurps-pdfs", help="Full file path to GURPS PDFs directory", required=False
+        "-g", "--gurps-pdfs", help="Full path to GURPS PDFs directory", required=False
     )
-    parser.add_argument("-o", "--output", help="Full file path to output folder", required=False)
+    parser.add_argument("-o", "--output", help="Full path to output folder", required=False)
     parser.add_argument(
         "-b",
         "--books",
@@ -310,11 +323,9 @@ if __name__ == "__main__":
             "PP": "Psionic Powers - GURPS - 4th Edition.pdf",
             "Th": "Thaumatology - GURPS - 4th Edition.pdf",
         },
-        "charPath": "c:\\Users\\"
-        + os.getlogin()
-        + "\\Documents\\GURPS Character Assistant 4\\characters",
-        "outPath": cwd + "\\assembledPDFs",
-        "inPath": cwd + "\\gurpsPDFs",
+        "charPath": [str(Path.home() / "Documents" / "GURPS Character Assistant 4" / "characters")],
+        "outPath": str(scriptDir / "assembledPDFs"),
+        "inPath": str(scriptDir / "gurpsPDFs"),
         "extraPages": {
             "sections": ["Game Mechanics"],
             "pages": [["B398", "B399", "B355", "B358", "B379", "B383"]],
@@ -327,7 +338,7 @@ if __name__ == "__main__":
         profile.update(loadJson(args["profile"]))
 
     if args["character"] != None:
-        profile["charPath"] = args["character"]
+        profile["charPath"][0] = args["character"]
 
     if args["gurps_pdfs"] != None:
         profile["inPath"] = args["gurps_pdfs"]
@@ -341,8 +352,8 @@ if __name__ == "__main__":
     if args["extra_pages"] != None:
         profile["extraPages"] = loadJson(args["extra_pages"])
 
-    print("Started")
+    print("Started!")
     status = doIt(profile)
     print(status)
 
-    # books = [ "B", "S", "MA", "M", "P", "L", "BT", "Bio", "CR", "SPI", "DR", "F", "HT", "PU:", "DF:", "GF", "Old West", "High-Tech", "UT", "PG1:", "PG2:", "LT:IA", "LT", "LT2:", "LT3:", "GLAD", "MY", "SU", "TS:CT", "PU1:", "PU2:", "PU3:", "H", "MA:", "A1:", "A2:", "A3:", "BS", "MH:", "Psi", "P3/21:", "MA:FC", "SV", "T:IW", "SC:AS", "DFM1:", "Th:UM", "LFM", "PP", "SS2:" "SS4:", "GT", "Th",
+    # books = [ "B", "S", "MA", "M", "P", "L", "BT", "Bio", "CR", "SPI", "DR", "F", "HT", "PU:", "DF:", "GF", "Old West", "High-Tech", "UT", "PG1:", "PG2:", "LT:IA", "LT", "LT2:", "LT3:", "GLAD", "MY", "SU", "TS:CT", "PU1:", "PU2:", "PU3:", "H", "MA:", "A1:", "A2:", "A3:", "BS", "MH:", "Psi", "P3/21:", "MA:FC", "SV", "T:IW", "SC:AS", "DFM1:", "Th:UM", "LFM", "PP", "SS2:" "SS4:", "GT", "Th", "Chi", "MH1:", "DF1:"]
